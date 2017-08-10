@@ -15,6 +15,24 @@ def isnormaldataitem(dataitem):
     """
     return 'Table' in dataitem and 'Action' in dataitem and 'Data' in dataitem
 
+def issnswrapped(logitem):
+    """
+    Checks if the message is in an SNS wrapper
+    """
+    return 'Type' in logitem and logitem['Type'] == 'Notification' and 'Message' in logitem and 'MessageId' in logitem
+
+def getdataitem(logitembody):
+    """
+    Figures out if the logitem is a raw item or if it has sns metadata
+    Returns the data sans SNS wrapper
+    """
+    logitem = json.loads(logitembody)
+    retval = logitem
+    if issnswrapped(logitem):
+        retval = json.loads(logitem['Message'])
+    return retval
+
+
 def flattendataitem(dataitem):
     """
     This could easily be more elegant, but
