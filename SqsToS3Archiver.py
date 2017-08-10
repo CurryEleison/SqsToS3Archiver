@@ -54,6 +54,16 @@ def flattendataitem(dataitem):
     return flattened
 
 
+def getarchivestream(dataitem):
+    """
+    Takes a data item and decides which logstream it should go into
+    """
+    logstream = 'multiplex'
+    if isnormaldataitem(dataitem):
+        logstream = "{0}_{1}".format(dataitem['Table'], dataitem['Action'])
+    return logstream
+
+
 
 class StreamItem:
     """
