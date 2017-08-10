@@ -133,7 +133,7 @@ class QueueArchiver:
         report = dict()
         report['Iterations'] = iterations
         report['ArchivedCount'] = totalcount
-        report['EstimatedInitalSize'] = estimatedsize
+        report['EstimatedInitalSize'] = initialsize
         return report
 
 
