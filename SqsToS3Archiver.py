@@ -101,6 +101,12 @@ class QueueArchiver:
 
         for strm in self.streams.keys():
             self.archivestream(strm, self.streams[strm])
+        
+        report = dict()
+        report['Iterations'] = iterations
+        report['ArchivedCount'] = totalcount
+        report['EstimatedInitalSize'] = estimatedsize
+        return report
 
 
         

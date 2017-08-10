@@ -1,6 +1,8 @@
 # SqsToS3Archiver
 Archives json messages from an SQS queue to S3
 
+The code is very young so please don't expect too much
+
 Very simple program to clean out an SQS queue of json messages and archive 
 the messages to S3. If the messages are from SNS it will strip the SNS 
 metainfo from the message. If messages conform to a particular format it will 

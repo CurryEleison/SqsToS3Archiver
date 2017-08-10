@@ -14,7 +14,8 @@ def main():
 
     args = parser.parse_args()
     runner = QueueArchiver(args.queue_url, args.bucket_name, args.region)
-    runner.run()
+    report = runner.run()
+    print("Ran Archiver. Archived {0} items out of initial queue size {1}. Used {2} iterations".format(report['ArchivedCount'], report['EstimatedInitalSize'], report['Iterations']))
 
 
 if __name__ == '__main__':
