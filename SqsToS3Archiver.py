@@ -70,11 +70,18 @@ class StreamItem:
     Holds an item to be flushed to S3 while we are processing
     """
     def __init__(self, receipt_handle, messageobject):
+        """
+        Initializer
+        """
         self.receipt_handle = receipt_handle
         self.messageobject = messageobject
 
     def getjson(self):
+        """
+        Returns msg as a json string.
+        """
         return json.dumps(flattendataitem(self.messageobject))
+
 
 class QueueArchiver:
     """
@@ -84,24 +91,27 @@ class QueueArchiver:
     eventually.
     Don't expect this to work well against seriously busy
     queues although some steps have been taken to handle
-    extreme cases
-    TODO: read visibility timeout of queue and ensure we
-    don't run for longer than that
+    reasonably busy or large queues
+    By default will flush messages in batches of ~10000 records
+    if there are a lot
     """
 
-    def __init__(self, queueurl, bucketname, region):
+    def __init__(self, queueurl, bucketname, region, prefix='customerlogarchive'):
         """
         Initializer
         """
+        self.maxstreamsize = 10000 #How may items we are OK keeping in memory at a time
+
         self.queueurl = queueurl
         self.bucketname = bucketname
         self.region = region
+        self.prefix = prefix
+
         self.sqsclient = boto3.client('sqs', region_name=self.region)
         self.s3client = boto3.client('s3', region_name=self.region)
-        self.startuptime = datetime.datetime.utcnow()
         self.streams = dict()
+        self.startuptime = datetime.datetime.utcnow()
         random.seed()
-        self.maxstreamsize = 10000
 
 
     def run(self):
@@ -109,15 +119,13 @@ class QueueArchiver:
         Main loop to pulle messages off the queue
         """
         lastcount = 9999 # just something big here to initialize the process
-        totalcount = 0
-        # initialsize = self.estimate_queuesize()
-        # (initalsize, timeout) = self.getqueueparams()
+        totalcount = 0 # to keep track of how many msgs we process
         queueparams = self.getqueueparams()
-        initialsize = queueparams['ApproximateNumberOfMessages']
-        timeout = queueparams['VisibilityTimeout']
-        estimatedsize = initialsize
-        iterations = 0
-        maxtime = timeout / 2
+        initialsize = queueparams['ApproximateNumberOfMessages'] #how many msgs we start with
+        timeout = queueparams['VisibilityTimeout'] # how long msgs are keps in-flight
+        estimatedsize = initialsize # running esitmate of how many msgs are left
+        iterations = 0 # running count of how many times we have looped
+        maxtime = timeout / 2 # the max amnt of time we want to keep processing
 
         # Don't run longer than the max which is half the timeout
         # Next condition breaks off if we have gotten very many iterations
@@ -134,29 +142,25 @@ class QueueArchiver:
             estimatedsize = estimatedsize - lastcount
             iterations = iterations + 1
             # If we have a lot of records  we will occasionally check if we should flush
-            # some streams
+            # some streams. Check every 10 loops after we go above max msg count
             if totalcount > self.maxstreamsize and iterations % 10 == 0:
                 for strmkey in self.streams.keys():
                     if len(self.streams[strmkey]) > self.maxstreamsize:
                         self.archivestream(strmkey, self.streams[strmkey])
                         self.streams[strmkey] = list()
 
-
-
+        # OK. Done pulling msgs from queues. Let's archive what we still have
         streamkeys = self.streams.keys()
         for strm in streamkeys:
             self.archivestream(strm, self.streams[strm])
             del self.streams[strm]
 
-        
+        # Finally send back a report of what we did
         report = dict()
         report['Iterations'] = iterations
         report['ArchivedCount'] = totalcount
         report['EstimatedInitalSize'] = initialsize
         return report
-
-
-        
 
 
     def pullbatchfromqueue(self):
@@ -184,7 +188,7 @@ class QueueArchiver:
                 if not streamname in self.streams:
                     self.streams[streamname] = list()
                 self.streams[streamname].append(itm)
-            except: # Really ought to be more sepcific about the exceptions we actually expect
+            except: # Really ought to be more specific about the exceptions we actually expect
                 pass
 
     def archivestream(self, streamname, singlestream):
@@ -205,8 +209,8 @@ class QueueArchiver:
                 ContentType='application/json', ContentEncoding='gzip',\
                 Body=gz_body.getvalue())
             for itm in singlestream:
-                self.sqsclient.delete_message(QueueUrl = self.queueurl, \
-                        ReceiptHandle = itm.receipt_handle)
+                self.sqsclient.delete_message(QueueUrl=self.queueurl, \
+                        ReceiptHandle=itm.receipt_handle)
 
 
     def getqueueparams(self):
@@ -221,20 +225,12 @@ class QueueArchiver:
         return retval
 
 
-    def estimate_queuesize(self):
-        """
-        Get a rough idea of how many items are visible in the queue atm
-        """
-        resp = self.sqsclient.get_queue_attributes(QueueUrl=self.queueurl, \
-                AttributeNames=['ApproximateNumberOfMessages'])
-        return long(resp['Attributes']['ApproximateNumberOfMessages'])
-
     def outputpath(self, streamkey):
         """
         Returns S3 prefix for log dir.
         Very important not to start with a /
         """
-        return 'customerlogarchive/{1}/{0:%Y}/{0:%m}/{0:%d}/'.format(self.startuptime, streamkey)
+        return '{2}/{1}/{0:%Y}/{0:%m}/{0:%d}/'.format(self.startuptime, streamkey, self.prefix)
 
     def outputfilename(self, streamkey):
         """
