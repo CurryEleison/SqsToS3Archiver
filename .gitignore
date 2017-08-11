@@ -100,3 +100,5 @@ ENV/
 # mypy
 .mypy_cache/
 archiver.py
+spammer.py
+
