@@ -135,7 +135,7 @@ class QueueArchiver:
             iterations = iterations + 1
             # If we have a lot of records  we will occasionally check if we should flush
             # some streams
-            if iterations > self.maxstreamsize and iterations % 10 == 0:
+            if totalcount > self.maxstreamsize and iterations % 10 == 0:
                 for strmkey in self.streams.keys():
                     if len(self.streams[strmkey]) > self.maxstreamsize:
                         self.archivestream(strmkey, self.streams[strmkey])
