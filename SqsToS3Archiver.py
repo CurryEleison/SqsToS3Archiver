@@ -110,25 +110,44 @@ class QueueArchiver:
         """
         lastcount = 9999 # just something big here to initialize the process
         totalcount = 0
-        initialsize = self.estimate_queuesize()
+        # initialsize = self.estimate_queuesize()
+        # (initalsize, timeout) = self.getqueueparams()
+        queueparams = self.getqueueparams()
+        initialsize = queueparams['ApproximateNumberOfMessages']
+        timeout = queueparams['VisibilityTimeout']
         estimatedsize = initialsize
         iterations = 0
+        maxtime = timeout / 2
 
-        # First condition breaks off if we have gotten very many iterations
-        # Second condition breaks if we have the item count we expected
+        # Don't run longer than the max which is half the timeout
+        # Next condition breaks off if we have gotten very many iterations
+        # Next condition breaks if we have the item count we expected
         # and not a lot remains
-        # The complexity is there to avoid being stuck processing 
-        # when the queue is running empty
-        while (lastcount > 0 and (iterations < estimatedsize)) \
-                or (lastcount > 1 and (totalcount <= initialsize)):
+        # The complexity is there to avoid being stuck processing
+        # when the queue is running empty and to ensure we don't
+        # keep queue items in the air longer than intended
+        while (datetime.datetime.utcnow() - self.startuptime).total_seconds() < maxtime \
+                and ((lastcount > 0 and (iterations < estimatedsize)) \
+                or (lastcount > 1 and (totalcount <= initialsize))):
             lastcount = self.pullbatchfromqueue()
             totalcount = totalcount + lastcount
             estimatedsize = estimatedsize - lastcount
             iterations = iterations + 1
-            # Add something to flush streams that are getting too big
+            # If we have a lot of records  we will occasionally check if we should flush
+            # some streams
+            if iterations > self.maxstreamsize and iterations % 10 == 0:
+                for strmkey in self.streams.keys():
+                    if len(self.streams[strmkey]) > self.maxstreamsize:
+                        self.archivestream(strmkey, self.streams[strmkey])
+                        self.streams[strmkey] = list()
 
-        for strm in self.streams.keys():
+
+
+        streamkeys = self.streams.keys()
+        for strm in streamkeys:
             self.archivestream(strm, self.streams[strm])
+            del self.streams[strm]
+
         
         report = dict()
         report['Iterations'] = iterations
@@ -190,6 +209,16 @@ class QueueArchiver:
                         ReceiptHandle = itm.receipt_handle)
 
 
+    def getqueueparams(self):
+        """
+        Find the initial size and visibility timeout of the queue
+        """
+        resp = self.sqsclient.get_queue_attributes(QueueUrl=self.queueurl, \
+                AttributeNames=['ApproximateNumberOfMessages', 'VisibilityTimeout'])
+        retval = dict()
+        retval['ApproximateNumberOfMessages'] = long(resp['Attributes']['ApproximateNumberOfMessages'])
+        retval['VisibilityTimeout'] = long(resp['Attributes']['VisibilityTimeout'])
+        return retval
 
 
     def estimate_queuesize(self):
