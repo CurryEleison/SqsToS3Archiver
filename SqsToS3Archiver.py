@@ -220,8 +220,8 @@ class QueueArchiver:
         resp = self.sqsclient.get_queue_attributes(QueueUrl=self.queueurl, \
                 AttributeNames=['ApproximateNumberOfMessages', 'VisibilityTimeout'])
         retval = dict()
-        retval['ApproximateNumberOfMessages'] = long(resp['Attributes']['ApproximateNumberOfMessages'])
-        retval['VisibilityTimeout'] = long(resp['Attributes']['VisibilityTimeout'])
+        retval['ApproximateNumberOfMessages'] = int(resp['Attributes']['ApproximateNumberOfMessages'])
+        retval['VisibilityTimeout'] = int(resp['Attributes']['VisibilityTimeout'])
         return retval
 
 
