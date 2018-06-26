@@ -150,7 +150,7 @@ class QueueArchiver:
                         self.streams[strmkey] = list()
 
         # OK. Done pulling msgs from queues. Let's archive what we still have
-        streamkeys = self.streams.keys()
+        streamkeys = list(self.streams.keys())
         for strm in streamkeys:
             self.archivestream(strm, self.streams[strm])
             del self.streams[strm]
@@ -202,8 +202,8 @@ class QueueArchiver:
             fname = self.outputfilename(streamname)
             key = os.path.join(fpath, fname)
             for itm in singlestream:
-                gz.write(itm.getjson())
-                gz.write('\n')
+                gz.write(itm.getjson().encode('utf-8'))
+                gz.write(b'\n')
             gz.close()
             self.s3client.put_object(Bucket=self.bucketname, Key=key, \
                 ContentType='application/json', ContentEncoding='gzip',\
