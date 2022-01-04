@@ -26,7 +26,7 @@ jobs:
           flavor: |
             latest=${{ github.ref == 'refs/heads/master' }}
           tags: |
-            type=schedule,pattern={{date 'YYYY-MM-DD'}}
+            type=sha
       - name: Inspect builder
         run: |
           echo "Name:      ${{ steps.buildx.outputs.name }}"
