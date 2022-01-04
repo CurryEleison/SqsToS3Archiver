@@ -4,7 +4,7 @@ on: push
 
 jobs:
   imagebuild:
-    name: Build Sqs2S3 container image and push if on main branch
+    name: Build Sqs2S3 container image and push if on master branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,5 +35,5 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
           tags: curryeleison/sqs2s3:latest
