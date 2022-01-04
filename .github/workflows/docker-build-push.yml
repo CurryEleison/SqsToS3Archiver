@@ -18,6 +18,14 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: curryeleison/sqs2s3
+          flavor: ${{ github.ref == 'refs/heads/master' }}
+          tags: |
+            type=schedule,pattern={{date 'YYYY-MM-DD'}}
       - name: Inspect builder
         run: |
           echo "Name:      ${{ steps.buildx.outputs.name }}"
@@ -36,4 +44,5 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.ref == 'refs/heads/master' }}
-          tags: curryeleison/sqs2s3:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
