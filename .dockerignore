@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtualenv
+.venv
+venv/
+ENV/
+
+.git/
+.github/
+.gitignore
+Dockerfile
+README.md
