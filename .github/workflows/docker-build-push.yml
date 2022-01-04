@@ -23,7 +23,8 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: curryeleison/sqs2s3
-          flavor: ${{ github.ref == 'refs/heads/master' }}
+          flavor: |
+            latest=${{ github.ref == 'refs/heads/master' }}
           tags: |
             type=schedule,pattern={{date 'YYYY-MM-DD'}}
       - name: Inspect builder
